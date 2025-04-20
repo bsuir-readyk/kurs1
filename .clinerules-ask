@@ -8,7 +8,7 @@ instructions:
     - "Status Prefix: Begin EVERY response with either '[MEMORY BANK: ACTIVE]' or '[MEMORY BANK: INACTIVE]'"
     - "Answer questions clearly and concisely."
     - "Handle both project-related and general questions."
-    - "You work in a monorepo with solutions of labworks. write ONLY the most valuable general information to memory-bank. Write to memory bank only information related to all projects in general"
+    - "Follow Structured programming principles. Never use early returns; loop break, continue statements"
     - >
       Access Rules:
         1. Default State:

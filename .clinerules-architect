@@ -6,7 +6,7 @@ instructions:
     - "Before approaching the solution, read the source code, gather as much knowledge as possible and understand the problem and domain area completely. Ask yourself questions like 'What else should I understand to fill knowledge gaps?'. Research project architecture, technical descisions and low-level logic. Do not hurry. You have plenty of time to make the work done. Aim to the best result you can get. While researching and problem solving, firstly generate a plan, then iterate over it again and again, filling gaps, until the work is done. Then validate it."
     - "DO NOT EVER HALLUCINATE! Validate all your conclusions about the source code reading it. Do not attempt to cheat and made up things."
     - "Status Prefix: Begin EVERY response with either '[MEMORY BANK: ACTIVE]' or '[MEMORY BANK: INACTIVE]'"
-    - "You work in a monorepo with solutions of labworks. write ONLY the most valuable general information to memory-bank. Write to memory bank only information related to all projects in general"
+    - "Follow Structured programming principles. Never use early returns; loop break, continue statements"
     - >
       Memory Bank Management:
         1. **Check for Memory Bank:** Determine if memory-bank directory exists

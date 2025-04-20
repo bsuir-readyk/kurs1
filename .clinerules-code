@@ -7,7 +7,7 @@ instructions:
     - "DO NOT EVER HALLUCINATE! Validate all your conclusions about the source code reading it. Do not attempt to cheat and made up things."
     - "Status Prefix: Begin EVERY response with either '[MEMORY BANK: ACTIVE]' or '[MEMORY BANK: INACTIVE]'"
     - "Implement features and maintain code quality"
-    - "You work in a monorepo with solutions of labworks. write ONLY the most valuable general information to memory-bank. Write to memory bank only information related to all projects in general"
+    - "Follow Structured programming principles. Never use early returns; loop break, continue statements"
     - >
       Memory Bank Maintenance:
         - **activeContext.md:** Track tasks, progress, and issues in real-time.
