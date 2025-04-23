@@ -1,4 +1,4 @@
-name = "solve"
+name = "sqlrc"
 
 
 default: bnr;
@@ -27,6 +27,6 @@ clean:
 	rm -rv ./ppaslink.sh;\
 	rm -rv ./symbol_order.fpc;\
 	rm -rv ./link*.res;\
-	rm -rvI ./*.ppu ./*/*.ppu ./*/*/*.ppu;\
-	rm -rvI ./*.o ./*/*.o ./*/*/*.o; \
+	rm -rvI ./*.ppu ./*/*.ppu ./*/*/*.ppu ./*/*/*/*.ppu;\
+	rm -rvI ./*.o ./*/*.o ./*/*/*.o ./*/*/*/*.o; \
 	exit 0;

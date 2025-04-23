@@ -1,0 +1,91 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/26.0.16 Chrome/132.0.6834.196 Electron/34.2.0 Safari/537.36" version="26.0.16">
+  <diagram name="Page-1" id="SkxLFEz8T39veyb9xA8E">
+    <mxGraphModel dx="1858" dy="1571" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="70rnCZlW4M4MBb4S41Bu-1" target="70rnCZlW4M4MBb4S41Bu-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-1" value="start" style="html=1;dashed=0;whiteSpace=wrap;shape=mxgraph.dfd.start" vertex="1" parent="1">
+          <mxGeometry x="85" y="9" width="80" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="70rnCZlW4M4MBb4S41Bu-3" target="70rnCZlW4M4MBb4S41Bu-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-3" value="Вывести информацию об инструменте." style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="65" y="59" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="70rnCZlW4M4MBb4S41Bu-5" target="70rnCZlW4M4MBb4S41Bu-7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-5" value="Получить путь до конфигурационного файла из параметров запуска." style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="45" y="139" width="160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-10" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="70rnCZlW4M4MBb4S41Bu-7" target="70rnCZlW4M4MBb4S41Bu-9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-7" value="Получить конфигурацию из файла" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="65" y="209" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="70rnCZlW4M4MBb4S41Bu-9" target="70rnCZlW4M4MBb4S41Bu-11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-9" value="Получить исходный код SQL файлов в виде текста." style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="65" y="289" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="70rnCZlW4M4MBb4S41Bu-11" target="70rnCZlW4M4MBb4S41Bu-13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-11" value="Получить информацию о схеме данных в ответствии с&amp;nbsp;выражениями Create Table" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="379" width="130" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-16" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="70rnCZlW4M4MBb4S41Bu-13" target="70rnCZlW4M4MBb4S41Bu-15">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-13" value="Сгенерировать контент файла на языке программирования GoLang со схемами данных" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="45" y="469" width="160" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-22" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="70rnCZlW4M4MBb4S41Bu-15" target="70rnCZlW4M4MBb4S41Bu-19">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-15" value="записать контент файла со схемами данных в файл, указанный в конфигурации." style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="37.5" y="549" width="175" height="72.5" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-18" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" source="70rnCZlW4M4MBb4S41Bu-20" target="70rnCZlW4M4MBb4S41Bu-21" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-24" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="70rnCZlW4M4MBb4S41Bu-19" target="70rnCZlW4M4MBb4S41Bu-23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-19" value="Получить список запросов, название функций и типах возвращаемых значений из файла с запросами, указанного в конфигурации." style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="42.5" y="649" width="165" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-20" value="Сгенерировать контент файла на языке программирования GoLang с параметризованными запросами, структурами параметров запросов и структурами возвращаемых значений" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="929" width="210" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-31" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="70rnCZlW4M4MBb4S41Bu-21" target="70rnCZlW4M4MBb4S41Bu-30">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-21" value="записать контент файла с запросами и нужными для них структурами, в файл, указанный в конфигурации." style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="32.5" y="1039" width="185" height="72.5" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-26" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="70rnCZlW4M4MBb4S41Bu-23" target="70rnCZlW4M4MBb4S41Bu-25">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-23" value="Добавить информацию о параметрах выражения&amp;nbsp; на языке sql к структурам соответственных запросов в программе." style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="35" y="749" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-27" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="70rnCZlW4M4MBb4S41Bu-25" target="70rnCZlW4M4MBb4S41Bu-20">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-25" value="Добавить информацию о структуре возвращаемого значения sql запросом." style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="48.75" y="849" width="152.5" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="70rnCZlW4M4MBb4S41Bu-30" value="end" style="html=1;dashed=0;whiteSpace=wrap;shape=mxgraph.dfd.start" vertex="1" parent="1">
+          <mxGeometry x="85" y="1129" width="80" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

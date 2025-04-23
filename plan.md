@@ -1,4 +1,8 @@
-# SQLRC migrating from js to pascal (fpc, mode delphi)
+# SQLRC migrating from js to pascal (fpc)
+
+## Purpose
+
+Generate Golang files based on raw sql files (schema.ts with CREATE TABLE statements and queries.sql with database queries with params written in notation "<@arg_name:arg_type@>") that incapsulate logic of calling database through standart db library. Files expose functions for calling database, argument structs for these functions, result structures and some generals structs to work with.
 
 ### Config
 

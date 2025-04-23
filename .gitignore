@@ -1,5 +1,24 @@
+# Скомпилированные файлы Pascal
 *.o
-bin_*
-.DS_Store
-.vscode
 *.ppu
+*.a
+*.so
+*.dll
+*.exe
+
+# Исполняемый файл программы
+sqlrc
+
+# Сгенерированные файлы
+example/__gen/
+
+# Временные файлы
+*.bak
+*.tmp
+*~
+
+# Файлы IDE
+*.lps
+*.compiled
+lib/
+backup/
