@@ -12,10 +12,9 @@ CREATE TABLE transactions (
     currency TEXT NOT NULL,
     id INTEGER PRIMARY KEY NOT NULL,
     owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    amount INTEGER NOT NULL,    -- * 1000 for ms-based
+    amount INTEGER NOT NULL,
     is_income INTEGER NOT NULL,
-    created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)     -- * 1000 for ms-based
-    -- * 1000 for ms-based
+    created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
 );
 
 CREATE TABLE tags (

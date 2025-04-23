@@ -8,6 +8,8 @@ uses
 // Функция для парсинга схемы SQL
 function ParseSchema(const SqlCode: string): TSchema;
 
+function SplitSqlFields(const FieldsStr: string): TStringArray;
+
 implementation
 
 const
@@ -47,7 +49,7 @@ begin
 end;
 
 // Функция для удаления комментариев из SQL-кода
-function RemoveComments(const SqlCode: string): string;
+function RemoveComments(const SqlCode: string): string; // FIXME
 var
   res: string;
   i, j: Integer;
@@ -127,12 +129,12 @@ begin
       
       FieldLine := Copy(TableDeclarations[i], StartPos, EndPos - StartPos + 1);
       
-      // Разделение на поля
+      // Разделение на поля с учетом скобок
       FieldCount := 0;
-      FieldLine := StringReplace(FieldLine, ',', #13#10, [rfReplaceAll]);
       
-      // Разделение на строки
-      FieldLines := SplitString(FieldLine, #13#10);
+      // Более умный алгоритм разделения на поля
+      // Учитывает скобки и не разделяет запятые внутри скобок
+      FieldLines := SplitSqlFields(FieldLine);
       
       for j := 0 to Length(FieldLines) - 1 do
       begin
@@ -147,6 +149,7 @@ begin
             FieldName := Trim(Copy(FieldLine, 1, k - 1));
             FieldType := Trim(Copy(FieldLine, k + 1, Length(FieldLine) - k));
             
+            // Извлекаем только первое слово как тип
             k := Pos(' ', FieldType);
             if k > 0 then
               FieldType := Trim(Copy(FieldType, 1, k - 1));
@@ -155,7 +158,7 @@ begin
                           (Pos('PRIMARY KEY', UpperCase(FieldLine)) = 0);
             
             if not IsAllowedSqlColumnType(UpperCase(FieldType)) then
-              raise Exception.Create('Unsupported column type. Got: ' + FieldType);
+              raise Exception.Create('ParseSchema: Unsupported column type. Got: "' + FieldType + '" on line "' + FieldLine + '"');
             
             // Добавление поля в таблицу
             SetLength(Result[i].Columns, FieldCount + 1);
@@ -172,6 +175,51 @@ begin
           end;
         end;
     end;
+end;
+
+// Функция для разделения SQL-полей с учетом скобок
+function SplitSqlFields(const FieldsStr: string): TStringArray;
+var
+  i, j, BracketLevel, Count: Integer;
+  CurrentField: string;
+  Fields: array of string;
+begin
+  SetLength(Fields, 0);
+  Count := 0;
+  BracketLevel := 0;
+  CurrentField := '';
+  
+  i := 1;
+  while i <= Length(FieldsStr) do
+  begin
+    case FieldsStr[i] of
+      '(': Inc(BracketLevel);
+      ')': Dec(BracketLevel);
+      ',':
+        if BracketLevel = 0 then
+        begin
+          // Запятая вне скобок - разделитель полей
+          SetLength(Fields, Count + 1);
+          Fields[Count] := Trim(CurrentField);
+          Inc(Count);
+          CurrentField := '';
+          Inc(i);
+          Continue;
+        end;
+    end;
+    
+    CurrentField := CurrentField + FieldsStr[i];
+    Inc(i);
+  end;
+  
+  // Добавляем последнее поле
+  if CurrentField <> '' then
+  begin
+    SetLength(Fields, Count + 1);
+    Fields[Count] := Trim(CurrentField);
+  end;
+  
+  Result := Fields;
 end;
 
 end.

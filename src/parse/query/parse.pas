@@ -101,11 +101,12 @@ begin
         k := Pos(':', Name);
         if k > 0 then
         begin
-          Type_ := Copy(Name, k + 1, Length(Name) - k);
+          Type_ := Trim(Copy(Name, k + 1, Length(Name) - k));
           Name := Copy(Name, 1, k - 1);
           
-          if not IsAllowedQueryReturnType(Type_) then
+          if not IsAllowedQueryReturnType(Type_) then begin
             raise Exception.Create('Invalid query return type. Got: ' + Type_);
+          end;
           
           QueryTokens[TotalQueryCount].SQL := Sql;
           QueryTokens[TotalQueryCount].Name := Name;
