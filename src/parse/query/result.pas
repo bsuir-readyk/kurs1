@@ -83,6 +83,9 @@ begin
   begin
     Result.TableField := Parts[0];
     Result.ReturningName := Parts[0];
+    if (Pos('.', Result.ReturningName)) <> 0 then begin
+      Result.ReturningName := Copy(Result.ReturningName, Pos('.', Result.ReturningName) + 1, Length(Result.ReturningName));
+    end;
   end
   else
   begin

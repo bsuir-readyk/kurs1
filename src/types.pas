@@ -125,11 +125,7 @@ var
 begin
   Result := False;
   for i := Low(ALLOWED_QUERY_RETURN_TYPES) to High(ALLOWED_QUERY_RETURN_TYPES) do
-    if ALLOWED_QUERY_RETURN_TYPES[i] = TypeName then
-    begin
-      Result := True;
-      Break;
-    end;
+    Result := (Result or (ALLOWED_QUERY_RETURN_TYPES[i] = TypeName));
 end;
 
 function IsAllowedSqlColumnType(const TypeName: string): Boolean;
@@ -138,11 +134,7 @@ var
 begin
   Result := False;
   for i := Low(ALLOWED_SQL_COLUMN_TYPES) to High(ALLOWED_SQL_COLUMN_TYPES) do
-    if ALLOWED_SQL_COLUMN_TYPES[i] = TypeName then
-    begin
-      Result := True;
-      Break;
-    end;
+    Result := (Result or (ALLOWED_SQL_COLUMN_TYPES[i] = TypeName));
 end;
 
 function IsAllowedGoType(const TypeName: string): Boolean;
@@ -151,11 +143,7 @@ var
 begin
   Result := False;
   for i := Low(ALLOWED_GO_TYPES) to High(ALLOWED_GO_TYPES) do
-    if ALLOWED_GO_TYPES[i] = TypeName then
-    begin
-      Result := True;
-      Break;
-    end;
+    Result := (Result or (ALLOWED_GO_TYPES[i] = TypeName));
 end;
 
 function IsAllowedOwnType(const TypeName: string): Boolean;
@@ -164,11 +152,7 @@ var
 begin
   Result := False;
   for i := Low(ALLOWED_OWN_TYPES) to High(ALLOWED_OWN_TYPES) do
-    if ALLOWED_OWN_TYPES[i] = TypeName then
-    begin
-      Result := True;
-      Break;
-    end;
+    Result := (Result or (ALLOWED_OWN_TYPES[i] = TypeName));
 end;
 
 function SqlToJsType(const SqlType: TColumnType): string;

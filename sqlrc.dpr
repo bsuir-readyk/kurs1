@@ -2,6 +2,7 @@ program sqlrc;
 
 uses
   SysUtils,
+  logging in 'src\logging.pas',
   types in 'src\types.pas',
   fs in 'src\fs.pas',
   schema in 'src\parse\schema.pas',
@@ -15,6 +16,7 @@ uses
   return_exec in 'src\generate\return\exec.pas';
 
 var
+  Log: TLogF;
   ConfigPath: string;
   WorkDir: string;
   Config: TConfig;
@@ -39,31 +41,44 @@ begin
       Exit;
     end;
 
+    // Log := GetLogger(LL_NO_LOGS);
+    Log := GetLogger(LL_DEBUG);
+
     ConfigPath := ExpandFileName(ParamStr(2));
     WorkDir := ExtractFileDir(ConfigPath);
 
-    WriteLn('Started...');
+    Log(LL_INFO, 'Started...');
     Config := GetConfig(ConfigPath);
     
+    Log(LL_INFO, 'Getting code sources...');
     Codes := GetCodes(Config, WorkDir);
     
+    Log(LL_INFO, 'Parsing schema...');
     SchemaTokens := ParseSchema(Codes.Schema);
     
+    Log(LL_INFO, 'Generating schema content...');
     SchemaContent := GenerateSchema(SchemaTokens, Config.Package.Name, Config.RemoveTrailingS);
     
     SchemaPath := IncludeTrailingPathDelimiter(WorkDir) + Config.Package.Path + 'schema.go';
     
+    Log(LL_INFO, 'Writing schema content...');
     Write(SchemaContent, SchemaPath);
+    
     WriteLn('✅ Wrote schema to ' + SchemaPath);
 
+    Log(LL_INFO, 'Parsing queries from source code...');
     QuerySetsTokens := ParseQueries(Codes.Queries);
   
+    Log(LL_INFO, 'Parsing queries params...');
     QuerySetsWithParams := ParseQueryParams(QuerySetsTokens);
   
+    Log(LL_INFO, 'Parsing queries results...');
     QuerySetsWithResolvedResult := ParseResolveResult(QuerySetsWithParams);
   
+    Log(LL_INFO, 'Generating queries content...');
     QuerySetsContent := GenerateQueryFile(QuerySetsWithResolvedResult, SchemaTokens, Config.Package.Name);
   
+    Log(LL_INFO, 'Writing queries content...');
     QueryPath := IncludeTrailingPathDelimiter(WorkDir) + Config.Package.Path + 'query.go';
 
     Write(QuerySetsContent, QueryPath);

@@ -52,8 +52,8 @@ begin
   for i := 0 to Length(ResultFields) - 1 do
   begin
     if i > 0 then
-      ScanFields := ScanFields + ',' + #13#10 + '      ';
-    ScanFields := ScanFields + '&i.' + ResultFields[i];
+      ScanFields := ScanFields + #13#10 + '      ';
+    ScanFields := ScanFields + '&i.' + ResultFields[i] + ',';
   end;
   
   // Формирование функции

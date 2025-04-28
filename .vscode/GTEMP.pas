@@ -1,132 +1,173 @@
-unit query_parse;
+unit query_gen;
 
 interface
 
 uses
-  SysUtils, types, fs;
+  SysUtils, types, return_one, return_many, return_exec, logging;
 
-// Функция для парсинга запросов SQL
-function ParseQueries(const SqlCodes: array of string): TQueryTokenArray;
+// Функция для генерации кода запросов
+function GenerateQueryFile(const Queries: array of TResolvedReturnQuery; const Schema: TSchema; const PackageName: string): string;
 
 implementation
 
-const
-  SQL_COMMENT_TOKEN = '--@';
-  SQL_DELIMITER_TOKEN = ';';
-
-// Функция для парсинга запросов SQL
-function ParseQueries(const SqlCodes: array of string): TQueryTokenArray;
-var
-  Parts, SqlParts: array of string;
-  i, j, k, QueryCount, TotalQueryCount: Integer;
-  Line, Head, Sql, Name, Type_: string;
-  QueryTokens: TQueryTokenArray;
+// Функция для преобразования первой буквы строки в верхний регистр
+function Capitalize(const S: string): string;
 begin
-  SetLength(QueryTokens, 0);
-  TotalQueryCount := 0;
+  if S = '' then
+    Result := ''
+  else
+    Result := UpperCase(S[1]) + Copy(S, 2, Length(S) - 1);
+end;
+
+// Константа с именем текущего модуля для логирования
+const
+  MODULE_NAME = 'query_gen';
+
+// Функция для получения полей результата запроса
+function GetResultFields(const Query: TResolvedReturnQuery; const Schema: TSchema): TStringArray;
+var
+  ResultFields: TStringArray;
+  i, j, k, m, FieldCount: Integer;
+  TableName, FieldName: string;
+  Found: Boolean;
+  Log: TLogF;
+begin
+  Log := GetLogger(LL_NO_LOGS);
+
+  ResultFields := nil;
+  FieldCount := 0;
   
-  for i := 0 to Length(SqlCodes) - 1 do
+  for i := 0 to Length(Query.Results) - 1 do
   begin
-    // Разделение SQL-кода на части
-    SetLength(Parts, 0);
-    SetLength(SqlParts, 0);
+    TableName := Query.Results[i].TableName;
     
-    // Разделение по комментариям
-    Line := SqlCodes[i];
-    j := 1;
-    QueryCount := 0;
-    
-    while j <= Length(Line) do
+    for j := 0 to Length(Query.Results[i].Fields) - 1 do
     begin
-      k := Pos(SQL_COMMENT_TOKEN, Copy(Line, j, Length(Line)));
-      if k > 0 then
-        k := k + j - 1
-      else
-        Break;
-      
-      j := k + Length(SQL_COMMENT_TOKEN);
-      k := Pos(SQL_COMMENT_TOKEN, Copy(Line, j, Length(Line)));
-      if k > 0 then
-        k := k + j - 1
-      else
-        k := Length(Line) + 1;
-      
-      SetLength(Parts, QueryCount + 1);
-      Parts[QueryCount] := Trim(Copy(Line, j, k - j));
-      Inc(QueryCount);
-      j := k;
-    end;
-    
-    // Разделение по разделителям
-    SetLength(SqlParts, QueryCount);
-    for j := 0 to QueryCount - 1 do
-    begin
-      Line := Parts[j];
-      k := Pos(SQL_DELIMITER_TOKEN, Line);
-      if k > 0 then
-        Line := Copy(Line, 1, k);
-      
-      SqlParts[j] := Trim(Line);
-    end;
-    
-    // Проверка количества запросов
-    if Length(Parts) <> Length(SqlParts) then
-      raise Exception.Create('You can use only one query per method. Consider using `Subqueries` or `CTEs`');
-    
-    // Парсинг запросов
-    SetLength(QueryTokens, TotalQueryCount + QueryCount);
-    
-    for j := 0 to QueryCount - 1 do
-    begin
-      Line := SqlParts[j];
-      
-      // Разделение на заголовок и SQL-код
-      k := Pos(#10, Line);
-      if k > 0 then
+      FieldName := Query.Results[i].Fields[j].TableField;
+      log(LL_DEBUG, FieldName);
+      if (Pos('.', FieldName)) <> 0 then
       begin
-        Head := Copy(Line, 1, k - 1);
-        Sql := Trim(Copy(Line, k + 1, Length(Line) - k));
+        FieldName := Copy(Query.Results[i].Fields[j].TableField, Pos('.', FieldName)+1, Length(Query.Results[i].Fields[j].TableField));
+      end;
+      
+      if FieldName = '*' then
+      begin
+        // Если поле - звездочка, добавляем все поля таблицы
+        for k := 0 to Length(Schema) - 1 do
+        begin
+          if Schema[k].Name = TableName then
+          begin
+            SetLength(ResultFields, FieldCount + Length(Schema[k].Columns));
+            
+            for m := 0 to Length(Schema[k].Columns) - 1 do
+            begin
+              ResultFields[FieldCount] := Capitalize(Schema[k].Columns[m].Name);
+              Inc(FieldCount);
+            end;
+            
+            Break;
+          end;
+        end;
       end
       else
       begin
-        Head := Line;
-        Sql := '';
-      end;
-      
-      // Извлечение имени и типа запроса
-      k := Pos(':', Head);
-      if k > 0 then
-      begin
-        Name := Copy(Head, k + 1, Length(Head) - k);
-        k := Pos(':', Name);
-        if k > 0 then
-        begin
-          Type_ := Trim(Copy(Name, k + 1, Length(Name) - k));
-          Name := Copy(Name, 1, k - 1);
-          
-          if not IsAllowedQueryReturnType(Type_) then begin
-            raise Exception.Create('Invalid query return type. Got: ' + Type_)
-          end
-          
-          QueryTokens[TotalQueryCount].SQL := Sql;
-          QueryTokens[TotalQueryCount].Name := Name;
-          
-          if Type_ = 'one' then
-            QueryTokens[TotalQueryCount].ReturnType := qrtOne
-          else if Type_ = 'many' then
-            QueryTokens[TotalQueryCount].ReturnType := qrtMany
-          else if Type_ = 'exec' then
-            QueryTokens[TotalQueryCount].ReturnType := qrtExec;
-          
-          Inc(TotalQueryCount);
-        end;
+        // Если поле - конкретное имя, добавляем его
+        SetLength(ResultFields, FieldCount + 1);
+        ResultFields[FieldCount] := Capitalize(Query.Results[i].Fields[j].ReturningName);
+        Inc(FieldCount);
       end;
     end;
   end;
   
-  // Обрезаем массив до фактического количества запросов
-  SetLength(QueryTokens, TotalQueryCount);
-  Result := QueryTokens;
+  Result := ResultFields;
+end;
+
+// Функция для генерации кода запросов
+function GenerateQueryFile(const Queries: array of TResolvedReturnQuery; const Schema: TSchema; const PackageName: string): string;
+var
+  QueryCode: string;
+  i, j: Integer;
+  SqlName, ParamsName, ResultName: string;
+  ParamsFields, ResultFields: TStringArray;
+  ResultFieldsStr: string;
+begin
+  Result := 'package ' + PackageName + #13#10#13#10;
+  Result := Result + 'import (' + #13#10;
+  Result := Result + '  "context"' + #13#10;
+  Result := Result + ')' + #13#10;
+  
+  
+  for i := 0 to Length(Queries) - 1 do
+  begin
+    Result := Result + #13#10#13#10 + '// ' + Queries[i].QueryToken.Name;
+    
+    // Генерация SQL-запроса
+    SqlName := Queries[i].QueryToken.Name + 'Sql';
+    Result := Result + #13#10 + 'const ' + SqlName + ' = `' + #13#10 + Queries[i].ResultSQL + #13#10 + '`';
+    
+    // Генерация структуры параметров
+    ParamsName := Capitalize(Queries[i].QueryToken.Name) + 'Params';
+    SetLength(ParamsFields, Length(Queries[i].Params));
+    
+    for j := 0 to Length(Queries[i].Params) - 1 do
+    begin
+      case Queries[i].Params[j].ParamType of
+        otString: ParamsFields[j] := Capitalize(Queries[i].Params[j].Name) + ' string';
+        otInteger: ParamsFields[j] := Capitalize(Queries[i].Params[j].Name) + ' int';
+      end;
+    end;
+    
+    Result := Result + #13#10 + 'type ' + ParamsName + ' struct {' + #13#10;
+    for j := 0 to Length(ParamsFields) - 1 do
+      Result := Result + '  ' + ParamsFields[j] + #13#10;
+    Result := Result + '}';
+    
+    // Генерация структуры результата
+    ResultName := Capitalize(Queries[i].QueryToken.Name) + 'Result';
+    ResultFields := GetResultFields(Queries[i], Schema);
+    
+    Result := Result + #13#10 + 'type ' + ResultName + ' struct {' + #13#10;
+    for j := 0 to Length(ResultFields) - 1 do
+    begin
+      // Поиск типа поля
+      ResultFieldsStr := ResultFields[j] + ' ';
+      
+      // Упрощенная версия - предполагаем, что все поля имеют тип string
+      // FIXME
+      ResultFieldsStr := ResultFieldsStr + 'string';
+      
+      Result := Result + '  ' + ResultFieldsStr + #13#10;
+    end;
+    Result := Result + '}';
+    
+    // Генерация функции запроса
+    try
+      case Queries[i].QueryToken.ReturnType of
+        qrtOne:
+          begin
+            QueryCode := GenerateReturnOne(Queries[i], SqlName, ParamsName, ResultName, ResultFields);
+          end;
+        qrtMany:
+          begin
+            QueryCode := GenerateReturnMany(Queries[i], SqlName, ParamsName, ResultName, ResultFields);
+          end;
+        qrtExec:
+          begin
+            QueryCode := GenerateExec(Queries[i], SqlName, ParamsName, ResultName, ResultFields);
+          end;
+      end;
+    except
+      on E: Exception do
+      begin
+        raise; // Перевыбрасываем исключение после логирования
+      end;
+    end;
+    
+    Result := Result + QueryCode;
+  end;
+  
+  GenerateQueryFile := Result;
 end;
 
 end.
+

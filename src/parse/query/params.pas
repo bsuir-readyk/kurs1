@@ -3,7 +3,7 @@ unit query_params;
 interface
 
 uses
-  SysUtils, types, fs;
+  SysUtils, types, fs, logging;
 
 // Функция для парсинга параметров запросов
 function ParseQueryParams(const QueryTokens: TQueryTokenArray): TParamedQueryArray;
@@ -18,11 +18,16 @@ const
 // Функция для парсинга параметров запросов
 function ParseQueryParams(const QueryTokens: TQueryTokenArray): TParamedQueryArray;
 var
-  i, j, k, ParamCount, Position: Integer;
+  i, j, k, ik, to_ik, ParamCount, Position: Integer;
   Sql, ParamStr, Name, Type_: string;
   ParamedQueries: TParamedQueryArray;
   ParamFound: Boolean;
+  Log: TLogF;
+  foundStart, foundEnd, founSep, prevEnd: integer;
+  activePart: string;
 begin
+  Log := GetLogger(LL_INFO);
+
   SetLength(ParamedQueries, Length(QueryTokens));
   
   for i := 0 to Length(QueryTokens) - 1 do
@@ -34,24 +39,21 @@ begin
     // Поиск и замена параметров
     Sql := QueryTokens[i].SQL;
     Position := 0;
-    
-    j := 1;
-    while j <= Length(Sql) do
+    prevEnd := 1;
+    log(LL_debug, sql);
+    while prevEnd <> 0 do
+
     begin
-      k := Pos(PARAM_REGEX_START, Copy(Sql, j, Length(Sql)));
-      if k > 0 then
-        k := k + j - 1;
-      if k = 0 then
+      activePart := Copy(Sql, prevEnd, Length(Sql));
+      foundStart := Pos(PARAM_REGEX_START, activePart);
+      if foundStart = 0 then
         Break;
       
-      j := k + Length(PARAM_REGEX_START);
-      k := Pos(PARAM_REGEX_END, Copy(Sql, j, Length(Sql)));
-      if k > 0 then
-        k := k + j - 1;
-      if k = 0 then
+      foundEnd := Pos(PARAM_REGEX_END, activePart);
+      if foundEnd = 0 then
         Break;
-      
-      ParamStr := Copy(Sql, j, k - j);
+
+      ParamStr := Copy(activePart, foundStart + Length(PARAM_REGEX_START), foundEnd - foundStart - Length(PARAM_REGEX_START));
       
       // Замена параметра на ?
       ParamedQueries[i].ResultSQL := StringReplace(
@@ -62,25 +64,25 @@ begin
       );
       
       // Извлечение имени и типа параметра
-      k := Pos(PARAM_REGEX_SEPARATOR, ParamStr);
-      if k > 0 then
+      founSep := Pos(PARAM_REGEX_SEPARATOR, ParamStr);
+      if founSep > 0 then
       begin
-        Name := Copy(ParamStr, 1, k - 1);
-        Type_ := Copy(ParamStr, k + 1, Length(ParamStr) - k);
+        Name := Copy(ParamStr, 1, founSep - 1);
+        Type_ := Copy(ParamStr, founSep + 1, Length(ParamStr) - founSep);
         
         if not IsAllowedOwnType(Type_) then
           raise Exception.Create('Invalid own type. Got: ' + Type_);
         
         // Добавление параметра
         ParamFound := False;
-        for k := 0 to Length(ParamedQueries[i].Params) - 1 do
+
+        for ik := 0 to Length(ParamedQueries[i].Params) - 1 do
         begin
-          if ParamedQueries[i].Params[k].Name = Name then
+          if ParamedQueries[i].Params[ik].Name = Name then
           begin
             ParamFound := True;
-            SetLength(ParamedQueries[i].Params[k].Positions, Length(ParamedQueries[i].Params[k].Positions) + 1);
-            ParamedQueries[i].Params[k].Positions[Length(ParamedQueries[i].Params[k].Positions) - 1] := Position;
-            Break;
+            SetLength(ParamedQueries[i].Params[ik].Positions, Length(ParamedQueries[i].Params[ik].Positions) + 1);
+            ParamedQueries[i].Params[ik].Positions[Length(ParamedQueries[i].Params[ik].Positions) - 1] := Position;
           end;
         end;
         
@@ -98,11 +100,15 @@ begin
           SetLength(ParamedQueries[i].Params[ParamCount].Positions, 1);
           ParamedQueries[i].Params[ParamCount].Positions[0] := Position;
         end;
-        
         Inc(Position);
+      end else begin
+        raise Exception.Create(format('Error parsing params: expected in format ''name:type'', but got ''%s''', [ParamStr]));
       end;
       
-      j := k + Length(PARAM_REGEX_END);
+      j := prevEnd + Pos(ParamStr, activePart) + Length(ParamStr) + Length(PARAM_REGEX_END);
+      prevEnd := prevEnd + Pos(ParamStr, activePart) + Length(ParamStr) + Length(PARAM_REGEX_END);
+      // log(LL_DEBUG, Stringifyint(prevEnd));
+      // log(LL_DEBUG, Stringifyint(Length(sql)));
     end;
   end;
   

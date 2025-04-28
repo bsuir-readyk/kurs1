@@ -3,7 +3,7 @@ unit query_gen;
 interface
 
 uses
-  SysUtils, types, return_one, return_many, return_exec;
+  SysUtils, types, return_one, return_many, return_exec, logging;
 
 // Функция для генерации кода запросов
 function GenerateQueryFile(const Queries: array of TResolvedReturnQuery; const Schema: TSchema; const PackageName: string): string;
@@ -30,7 +30,10 @@ var
   i, j, k, m, FieldCount: Integer;
   TableName, FieldName: string;
   Found: Boolean;
+  Log: TLogF;
 begin
+  Log := GetLogger(LL_NO_LOGS);
+
   ResultFields := nil;
   FieldCount := 0;
   
@@ -41,6 +44,11 @@ begin
     for j := 0 to Length(Query.Results[i].Fields) - 1 do
     begin
       FieldName := Query.Results[i].Fields[j].TableField;
+      log(LL_DEBUG, FieldName);
+      if (Pos('.', FieldName)) <> 0 then
+      begin
+        FieldName := Copy(Query.Results[i].Fields[j].TableField, Pos('.', FieldName)+1, Length(Query.Results[i].Fields[j].TableField));
+      end;
       
       if FieldName = '*' then
       begin
@@ -125,6 +133,7 @@ begin
       ResultFieldsStr := ResultFields[j] + ' ';
       
       // Упрощенная версия - предполагаем, что все поля имеют тип string
+      // FIXME
       ResultFieldsStr := ResultFieldsStr + 'string';
       
       Result := Result + '  ' + ResultFieldsStr + #13#10;

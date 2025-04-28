@@ -8,7 +8,7 @@ build:
 	@fpc ${name}$$N.dpr -obin_${name}$$N -ap -CO -Mdelphi -Un
 
 run:
-	@./bin_${name}$$N
+	@./bin_${name}$$N --cfg ./example/config.txt
 	
 bnr:
 	@echo "\n\n---===---\nbuilding... \n---===---\n\n"
@@ -27,6 +27,6 @@ clean:
 	rm -rv ./ppaslink.sh;\
 	rm -rv ./symbol_order.fpc;\
 	rm -rv ./link*.res;\
-	rm -rvI ./*.ppu ./*/*.ppu ./*/*/*.ppu ./*/*/*/*.ppu;\
-	rm -rvI ./*.o ./*/*.o ./*/*/*.o ./*/*/*/*.o; \
+	rm -rv ./*.ppu ./*/*.ppu ./*/*/*.ppu ./*/*/*/*.ppu;\
+	rm -rv ./*.o ./*/*.o ./*/*/*.o ./*/*/*/*.o; \
 	exit 0;
