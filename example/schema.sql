@@ -15,6 +15,7 @@ CREATE TABLE transactions (
     amount INTEGER NOT NULL,
     is_income INTEGER NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
+    -- * 1000 for ms-based
 );
 
 CREATE TABLE tags (

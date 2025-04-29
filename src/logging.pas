@@ -3,7 +3,7 @@ unit logging;
 interface
 
 uses
-  SysUtils;
+  SysUtils, types;
 
 type TLOG_LEVEL = (LL_NO_LOGS, LL_DEBUG, LL_INFO, LL_WARN, LL_ERR);
 type TLogF = procedure(level: TLOG_LEVEL; msg: string);
@@ -22,6 +22,7 @@ function GetLogger(ll: TLOG_LEVEL): TLogF;
 // function Stringify(v: any): string;
 function StringifyArr(v: array of string): string;
 function StringifyInt(v: integer): string;
+function StringifyTColumnType(v: TColumnType): string;
 
 implementation
 
@@ -38,8 +39,18 @@ begin
         result := format('%s, %s', [result, v[idx]]);
     end;
 end;
+
 function StringifyInt(v: integer): string;
 begin result := format('%d', [v]); end;
+
+function StringifyTColumnType(v: TColumnType): string;
+begin
+Result := 'unresolved type for <TColumnType>';
+case v of
+    ctText: Result := 'ctText';
+    ctInteger: Result := 'ctInteger';
+end;
+end;
 
 
 function TLOG_LEVEL_Stirngify(ll: TLOG_LEVEL): string;

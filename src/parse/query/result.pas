@@ -75,9 +75,9 @@ var
 begin
   // Заменяем " as " на просто пробел
   if Pos(' as ', LowerCase(Field)) > 0 then
-    Parts := SplitString(StringReplace(Field, ' as ', ' ', [rfReplaceAll, rfIgnoreCase]), ' ')
-  else
-    Parts := SplitString(Field, ' ');
+    Parts := SplitString(StringReplace(Field, ' as ', ' ', [rfReplaceAll, rfIgnoreCase]), ' ');
+  
+  Parts := SplitString(Field, ' ');
   
   if Length(Parts) = 1 then
   begin
@@ -112,7 +112,6 @@ begin
   // Извлекаем поля после RETURNING
   Fields := SplitString(Copy(SqlWoComments, IdxReturning + Length(RETURNING_KW), Length(SqlWoComments) - IdxReturning - Length(RETURNING_KW)), ',');
   
-  // Получаем имя таблицы
   TableName := GetTableName(SqlWoComments);
   
   // Добавляем таблицу в результат
@@ -154,6 +153,7 @@ begin
   SelectFields := SplitString(SelectFieldsStr, ',');
   
   // Получаем имя таблицы (упрощенно, берем первую таблицу после FROM)
+  // FIXME
   TableName := '';
   i := IdxFrom + Length(FROM_KW);
   while (i <= Length(SqlWoComments)) and (SqlWoComments[i] = ' ') do
