@@ -10,7 +10,7 @@
 sqlrc
 
 # Сгенерированные файлы
-example/__gen/
+# example/__gen/
 
 # Временные файлы
 *.bak
