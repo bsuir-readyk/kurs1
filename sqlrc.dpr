@@ -41,8 +41,7 @@ begin
       Exit;
     end;
 
-    // Log := GetLogger(LL_NO_LOGS);
-    Log := GetLogger(LL_DEBUG);
+    Log := GetLogger(LL_INFO);
 
     ConfigPath := ExpandFileName(ParamStr(2));
     WorkDir := ExtractFileDir(ConfigPath);

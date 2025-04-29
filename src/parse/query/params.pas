@@ -26,7 +26,7 @@ var
   foundStart, foundEnd, founSep, prevEnd: integer;
   activePart: string;
 begin
-  Log := GetLogger(LL_INFO);
+  Log := GetLogger(LL_NO_LOGS);
 
   SetLength(ParamedQueries, Length(QueryTokens));
   

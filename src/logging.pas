@@ -22,6 +22,7 @@ function GetLogger(ll: TLOG_LEVEL): TLogF;
 // function Stringify(v: any): string;
 function StringifyArr(v: array of string): string;
 function StringifyInt(v: integer): string;
+function StringifyBool(v: Boolean): string;
 function StringifyTColumnType(v: TColumnType): string;
 
 implementation
@@ -42,6 +43,9 @@ end;
 
 function StringifyInt(v: integer): string;
 begin result := format('%d', [v]); end;
+
+function StringifyBool(v: Boolean): string;
+begin result := format('%b', [v]); end;
 
 function StringifyTColumnType(v: TColumnType): string;
 begin

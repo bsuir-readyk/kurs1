@@ -82,22 +82,29 @@ begin
 
         ResultFields.goFieldNames[FieldCount] := Capitalize(Query.Results[i].Fields[j].ReturningName);
         
-        log(LL_DEBUG, 'TableName: ' + TableName);
-        log(LL_DEBUG, 'Query.Results[i].Fields[j].TableField: ' + Query.Results[i].Fields[j].TableField);
-        log(LL_DEBUG, 'Query.Results[i].Fields[j].ReturningName: ' + Query.Results[i].Fields[j].ReturningName);
+        // log(LL_DEBUG, 'TableName: ' + TableName);
+        // log(LL_DEBUG, 'Query.Results[i].Fields[j].TableField: ' + Query.Results[i].Fields[j].TableField);
+        // log(LL_DEBUG, 'Query.Results[i].Fields[j].ReturningName: ' + Query.Results[i].Fields[j].ReturningName);
 
+        Found := false;
         for k := 0 to Length(Schema) - 1 do
         begin
           if Schema[k].Name = TableName then
           begin
             for m := 0 to Length(Schema[k].Columns) - 1 do
             begin
-              if Schema[k].Columns[m].Name = Query.Results[i].Fields[j].TableField then
+              // log(LL_DEBUG, format('%s - %s', [Schema[k].Columns[m].Name, Query.Results[i].Fields[j].TableField]));
+              if Schema[k].Columns[m].Name = Query.Results[i].Fields[j].ReturningName then
               begin
                 ResultFields.goType[FieldCount] := GoTypeToString(SqlToGoType(Schema[k].Columns[m].ColumnType));
+                Found := true;
               end;
             end;
           end;
+        end;
+
+        if (not Found) then begin
+          raise Exception.create(format('Cant found type for field: %s, tablename: %s, tablefield: %s', [Query.Results[i].Fields[j].TableField, TableName, Query.Results[i].Fields[j].ReturningName]));
         end;
 
         Inc(FieldCount);
@@ -105,9 +112,9 @@ begin
     end;
   end;
   
-  log(LL_DEBUG, StringifyArr(ResultFields.goFieldNames));
-  log(LL_DEBUG, StringifyArr(ResultFields.goType));
-  log(LL_DEBUG, '----');
+  // log(LL_DEBUG, StringifyArr(ResultFields.goFieldNames));
+  // log(LL_DEBUG, StringifyArr(ResultFields.goType));
+  // log(LL_DEBUG, '----');
   // log(LL_DEBUG, StringifyInt(Length(ResultFields.goType)));
   // log(LL_DEBUG, StringifyInt(Length(ResultFields.goFieldNames)));
   Result := ResultFields;
@@ -123,7 +130,7 @@ var
   ResultFields: TResultFields;
   log: TLogF;
 begin
-  log := GetLogger(LL_DEBUG);
+  log := GetLogger(LL_NO_LOGS);
 
   Result := 'package ' + PackageName + #13#10#13#10;
   Result := Result + 'import (' + #13#10;
