@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+you can NEVER touch generated files.
+
+you should not modifiy sql files. But if there is an issue you can point at it.
+
+you should ALWAYS be acknowledge about contents of sql files contents in example directory. They are the most crucial files in this project

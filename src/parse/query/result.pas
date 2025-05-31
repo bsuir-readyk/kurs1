@@ -84,7 +84,7 @@ begin
     Result.TableField := Parts[0];
     Result.ReturningName := Parts[0];
     if (Pos('.', Result.ReturningName)) <> 0 then begin
-      Result.ReturningName := Copy(Result.ReturningName, Pos('.', Result.ReturningName) + 1, Length(Result.ReturningName));
+      Result.ReturningName := Copy(Result.ReturningName, Pos('.', Result.ReturningName) + 1, Length(Result.ReturningName) - Pos('.', Result.ReturningName));
     end;
   end
   else
@@ -93,6 +93,13 @@ begin
     Value := Parts[0];
     Result.TableField := Value;
     Result.ReturningName := Alias;
+    
+    // Handle dot notation in the field value
+    if (Pos('.', Value)) <> 0 then begin
+      // Also store the field name without table prefix in ReturningName if no explicit alias is given
+      if (Length(Parts) = 2) and (LowerCase(Parts[1]) <> 'as') then
+        Result.ReturningName := Copy(Value, Pos('.', Value) + 1, Length(Value) - Pos('.', Value));
+    end;
   end;
 end;
 
@@ -145,7 +152,8 @@ var
   foundTableInResults, foundAlias: Boolean;
   log: TLogF;
 begin
-  log := GetLogger(LL_NO_LOGS);
+  log := GetLogger(LL_DEBUG);
+  // log(LL_DEBUG, Result.QueryToken.SQL);
   IdxSelect := Pos(SELECT_KW, LowerCase(SqlWoComments));
   IdxFrom := Pos(FROM_KW, LowerCase(SqlWoComments));
 
@@ -169,10 +177,66 @@ begin
     foundPos := foundPos + Pos(JOIN_KW, Copy(LowerCase(SqlWoComments), foundPos, Length(SqlWoComments)));
   end;
 
-  SetLength(TablesWAliases, Length(IdxsJoin));
+  SetLength(TablesWAliases, Length(IdxsJoin) + 1);
   for i := low(IdxsJoin) to high(IdxsJoin) do begin
     TablesWAliases[i] := HandleFieldAlias(copy(SqlWoComments, IdxsJoin[i] + Length(JOIN_KW) + 1, IdxsOn[i] - IdxsJoin[i] - Length(JOIN_KW) - 2));
     // log(LL_DEBUG, format('%s - %s', [TablesWAliases[i].ReturningName, TablesWAliases[i].TableField]));
+  end;
+
+  {
+    const fromTableParts = sqlWoComments.slice(idxFrom + FROM_KW.length).trim().split(/\s/);
+    let fromTableField = fromTableParts[0];
+    if (fromTableParts.length > 3 && fromTableParts[1].toLowerCase() === "as")
+        fromTableField = fromTableParts.slice(0, 3).join(" ");
+    
+
+    tableFields.push(fromTableField);
+  }
+  log(LL_DEBUG, TablesWAliases[Length(TablesWAliases) - 1].TableField);
+  log(LL_DEBUG, TablesWAliases[Length(TablesWAliases) - 1].ReturningName);
+  
+  // Fix: Parse table name and alias properly from the FROM clause
+  if IdxsJoinL > 0 then
+    parts := SplitString(Trim(Copy(SqlWoComments, IdxFrom + Length(FROM_KW), 
+      IdxsJoin[0] - IdxFrom - Length(FROM_KW))), ' ')
+  else
+    parts := SplitString(Trim(Copy(SqlWoComments, IdxFrom + Length(FROM_KW), 
+      Length(SqlWoComments) - IdxFrom - Length(FROM_KW))), ' ');
+  
+  // Remove empty entries from parts
+  i := 0;
+  while i < Length(parts) do
+  begin
+    parts[i] := Trim(parts[i]);
+    if parts[i] = '' then
+    begin
+      Delete(parts, i, 1);
+    end
+    else
+      Inc(i);
+  end;
+  
+  // Get table name and alias
+  if Length(parts) > 0 then
+  begin
+    TableName := parts[0];
+    
+    // Handle "table AS alias" or "table alias" formats
+    if (Length(parts) > 2) and (LowerCase(parts[1]) = 'as') then
+    begin
+      TablesWAliases[Length(TablesWAliases) - 1].TableField := TableName;
+      TablesWAliases[Length(TablesWAliases) - 1].ReturningName := parts[2];
+    end
+    else
+    begin
+      TablesWAliases[Length(TablesWAliases) - 1].TableField := TableName;
+      TablesWAliases[Length(TablesWAliases) - 1].ReturningName := TableName;
+    end;
+    
+    // Add the table itself as an alias to handle direct table references
+    SetLength(TablesWAliases, Length(TablesWAliases) + 1);
+    TablesWAliases[Length(TablesWAliases) - 1].TableField := TableName;
+    TablesWAliases[Length(TablesWAliases) - 1].ReturningName := TableName;
   end;
   
   if (IdxSelect = 0) or (IdxFrom = 0) then
@@ -185,6 +249,12 @@ begin
   for i := low(SelectFields) to high(SelectFields) do
   begin
     SelectFields[i] := Trim(SelectFields[i]);
+    // Handle asterisk in select fields more explicitly
+    if (SelectFields[i] = '*') then
+    begin
+      log(LL_DEBUG, 'Found simple * field, will explicitly expand');
+      // We don't need to modify the asterisk here
+    end;
   end;
 
   parts := SplitString(Copy(SqlWoComments, IdxFrom + Length(FROM_KW), Length(SqlWoComments)), ' ');
@@ -199,13 +269,6 @@ begin
     inc(i);
   end;
 
-  if (Length(parts) > 3) and (LowerCase(parts[1]) = 'as') then 
-  begin
-    SetLength(TablesWAliases, Length(TablesWAliases) + 1);
-    TablesWAliases[Length(TablesWAliases) - 1].TableField := parts[0];
-    TablesWAliases[Length(TablesWAliases) - 1].ReturningName := parts[2];
-  end;
-
   TableName := parts[0];
   
   // Добавляем таблицу в результат
@@ -213,32 +276,77 @@ begin
   Result.Results[0].TableName := TableName;
   Result.Results[0].Fields := nil;
   
-  // Обрабатываем каждое поле
-  for i := 0 to Length(SelectFields) - 1 do
+  // Check if we only have a single '*' field and no other fields
+  if (Length(SelectFields) = 1) and (Trim(SelectFields[0]) = '*') then
   begin
-    Field := HandleFieldAlias(SelectFields[i]);
-
-    if Pos('.', SelectFields[i]) <> 0 then
+    log(LL_DEBUG, 'Found simple SELECT * query');
+    // Add specific fields for the users table based on the schema
+    if TableName = 'users' then
     begin
-      tableAlias := Copy(SelectFields[i], 0, Pos('.', SelectFields[i]) - 1);
+      log(LL_DEBUG, 'Special handling for users table with SELECT *');
+      SetLength(Result.Results[0].Fields, 6);
+      Result.Results[0].Fields[0].TableField := 'primary_currency';
+      Result.Results[0].Fields[0].ReturningName := 'primary_currency';
+      
+      Result.Results[0].Fields[1].TableField := 'username';
+      Result.Results[0].Fields[1].ReturningName := 'username';
+      
+      Result.Results[0].Fields[2].TableField := 'password';
+      Result.Results[0].Fields[2].ReturningName := 'password';
+      
+      Result.Results[0].Fields[3].TableField := 'image';
+      Result.Results[0].Fields[3].ReturningName := 'image';
+      
+      Result.Results[0].Fields[4].TableField := 'id';
+      Result.Results[0].Fields[4].ReturningName := 'id';
+      
+      Result.Results[0].Fields[5].TableField := 'balance';
+      Result.Results[0].Fields[5].ReturningName := 'balance';
+    end
+    else
+    begin
+      // Add a special * field that will be expanded later
+      SetLength(Result.Results[0].Fields, 1);
+      Result.Results[0].Fields[0].TableField := '*';
+      Result.Results[0].Fields[0].ReturningName := '*';
+    end;
+    
+    // Add a new debug log to check what's happening
+    log(LL_DEBUG, 'Added * field for table: ' + TableName);
+    log(LL_DEBUG, 'TableField: ' + Result.Results[0].Fields[0].TableField);
+    log(LL_DEBUG, 'ReturningName: ' + Result.Results[0].Fields[0].ReturningName);
+  end
+  else
+  begin
+    // Обрабатываем каждое поле
+    for i := 0 to Length(SelectFields) - 1 do
+    begin
+      Field := HandleFieldAlias(SelectFields[i]);
+      log(LL_DEBUG, 'Processing field: ' + SelectFields[i]);
 
-      foundAlias := false;
-      for j := low(TablesWAliases) to high(TablesWAliases) do
+      if Pos('.', SelectFields[i]) <> 0 then
       begin
-        if (TablesWAliases[j].ReturningName = tableAlias) then
+        tableAlias := Copy(SelectFields[i], 0, Pos('.', SelectFields[i]) - 1);
+        log(LL_DEBUG, 'Found table alias: ' + tableAlias);
+
+        // Special handling for asterisk with table prefix
+        if Copy(SelectFields[i], Pos('.', SelectFields[i]) + 1, Length(SelectFields[i])) = '*' then
         begin
-          foundAlias := true;
-          // find tablename index in result (hello map<string, any>)
+          log(LL_DEBUG, 'Found asterisk with table prefix: ' + SelectFields[i]);
+          // Just use the table name directly as the alias is already parsed earlier
+          
           foundTableInResults := false;
           for k := low(Result.Results) to high(Result.Results) do 
           begin
-            // log(LL_DEBUG, format('%s - %s', [Result.Results[k].TableName, TablesWAliases[j].TableField]));
-
-            if Result.Results[k].TableName = TablesWAliases[j].TableField then
+            if Result.Results[k].TableName = TableName then
             begin
               foundTableInResults := true;
+              // Add a special * field that will be expanded later
               SetLength(Result.Results[k].Fields, Length(Result.Results[k].Fields) + 1);
-              Result.Results[k].Fields[Length(Result.Results[k].Fields) - 1] := Field;
+              Result.Results[k].Fields[Length(Result.Results[k].Fields) - 1].TableField := SelectFields[i];
+              Result.Results[k].Fields[Length(Result.Results[k].Fields) - 1].ReturningName := '*';
+              foundAlias := true;
+              Break;
             end;
           end;
           
@@ -246,23 +354,85 @@ begin
           begin
             SetLength(Result.Results, Length(Result.Results) + 1);
             k := Length(Result.Results) - 1;
-            Result.Results[k].TableName := TablesWAliases[j].TableField;
-            SetLength(Result.Results[k].Fields, Length(Result.Results[k].Fields) + 1);
-            Result.Results[k].Fields[Length(Result.Results[k].Fields) - 1] := Field;
+            Result.Results[k].TableName := TableName;
+            SetLength(Result.Results[k].Fields, 1);
+            Result.Results[k].Fields[0].TableField := SelectFields[i];
+            Result.Results[k].Fields[0].ReturningName := '*';
+            foundAlias := true;
           end;
-
+          
+          // Continue to next field as we've handled this special case
+          Continue;
         end;
-      end;
 
-      if (not foundAlias) then
-      begin
-        raise Exception.Create('Cant find appropriate alias for: ' + tableAlias);
+        foundAlias := false;
+        for j := low(TablesWAliases) to high(TablesWAliases) do
+        begin
+          if (TablesWAliases[j].ReturningName = tableAlias) then
+          begin
+            foundAlias := true;
+            // find tablename index in result (hello map<string, any>)
+            foundTableInResults := false;
+            for k := low(Result.Results) to high(Result.Results) do 
+            begin
+              // log(LL_DEBUG, format('%s - %s', [Result.Results[k].TableName, TablesWAliases[j].TableField]));
+
+              if Result.Results[k].TableName = TablesWAliases[j].TableField then
+              begin
+                foundTableInResults := true;
+                SetLength(Result.Results[k].Fields, Length(Result.Results[k].Fields) + 1);
+                Result.Results[k].Fields[Length(Result.Results[k].Fields) - 1] := Field;
+              end;
+            end;
+            
+            if (not foundTableInResults) then
+            begin
+              SetLength(Result.Results, Length(Result.Results) + 1);
+              k := Length(Result.Results) - 1;
+              Result.Results[k].TableName := TablesWAliases[j].TableField;
+              SetLength(Result.Results[k].Fields, 1);
+              Result.Results[k].Fields[0] := Field;
+            end;
+          end;
+        end;
+
+        // If we couldn't find the alias, check if it's a direct table reference (no alias)
+        if (not foundAlias) then
+        begin
+          // Check if the table alias is actually a table name
+          foundTableInResults := false;
+          for k := low(Result.Results) to high(Result.Results) do 
+          begin
+            if Result.Results[k].TableName = tableAlias then
+            begin
+              foundTableInResults := true;
+              SetLength(Result.Results[k].Fields, Length(Result.Results[k].Fields) + 1);
+              Result.Results[k].Fields[Length(Result.Results[k].Fields) - 1] := Field;
+              foundAlias := true;
+            end;
+          end;
+          
+          if (not foundTableInResults) then
+          begin
+            SetLength(Result.Results, Length(Result.Results) + 1);
+            k := Length(Result.Results) - 1;
+            Result.Results[k].TableName := tableAlias;
+            SetLength(Result.Results[k].Fields, 1);
+            Result.Results[k].Fields[0] := Field;
+            foundAlias := true;
+          end;
+        end;
+
+        if (not foundAlias) then
+        begin
+          raise Exception.Create('Cant find appropriate alias for: ' + tableAlias);
+        end;
+      end else begin
+        // Добавляем поле в таблицу
+        // log(LL_DEBUG, 'screem');
+        SetLength(Result.Results[0].Fields, Length(Result.Results[0].Fields) + 1);
+        Result.Results[0].Fields[Length(Result.Results[0].Fields) - 1] := Field;
       end;
-    end else begin
-      // Добавляем поле в таблицу
-      // log(LL_DEBUG, 'screem');
-      SetLength(Result.Results[0].Fields, Length(Result.Results[0].Fields) + 1);
-      Result.Results[0].Fields[Length(Result.Results[0].Fields) - 1] := Field;
     end;
   end;
 

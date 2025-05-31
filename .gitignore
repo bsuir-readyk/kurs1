@@ -22,3 +22,4 @@ sqlrc
 *.compiled
 lib/
 backup/
+.vscode/GTEMP.pas
