@@ -67,7 +67,7 @@ var
   Found: Boolean;
   Log: TLogF;
 begin
-  Log := GetLogger(LL_DEBUG);
+  Log := GetLogger(LL_INFO);
 
   ResultFields.goFieldNames := nil;
   ResultFields.goType := nil;
@@ -208,12 +208,31 @@ var
   ParamsFieldsStrs, ResultFieldsStrs: TStringArray;
   ResultFields: TResultFields;
   log: TLogF;
+  HasArrayParams: Boolean;
 begin
   log := GetLogger(LL_NO_LOGS);
+  HasArrayParams := False;
+  
+  // Check if any query has array parameters
+  for i := 0 to Length(Queries) - 1 do
+  begin
+    for j := 0 to Length(Queries[i].Params) - 1 do
+    begin
+      if Queries[i].Params[j].IsArray then
+      begin
+        HasArrayParams := True;
+        Break;
+      end;
+    end;
+    if HasArrayParams then
+      Break;
+  end;
 
   Result := 'package ' + PackageName + #13#10#13#10;
   Result := Result + 'import (' + #13#10;
   Result := Result + '  "context"' + #13#10;
+  if HasArrayParams then
+    Result := Result + '  "strings"' + #13#10;
   Result := Result + ')' + #13#10;
   
   
@@ -234,6 +253,8 @@ begin
       case Queries[i].Params[j].ParamType of
         otString: ParamsFieldsStrs[j] := Capitalize(Queries[i].Params[j].Name) + ' string';
         otInteger: ParamsFieldsStrs[j] := Capitalize(Queries[i].Params[j].Name) + ' int';
+        otArrayString: ParamsFieldsStrs[j] := Capitalize(Queries[i].Params[j].Name) + ' []string';
+        otArrayInteger: ParamsFieldsStrs[j] := Capitalize(Queries[i].Params[j].Name) + ' []int';
       end;
     end;
     

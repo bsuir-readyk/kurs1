@@ -152,7 +152,7 @@ var
   foundTableInResults, foundAlias: Boolean;
   log: TLogF;
 begin
-  log := GetLogger(LL_DEBUG);
+  Log := GetLogger(LL_INFO);
   // log(LL_DEBUG, Result.QueryToken.SQL);
   IdxSelect := Pos(SELECT_KW, LowerCase(SqlWoComments));
   IdxFrom := Pos(FROM_KW, LowerCase(SqlWoComments));

@@ -54,12 +54,13 @@ type
   
   TQueryTokenArray = array of TQueryToken;
   
-  TOwnType = (otString, otInteger);
+  TOwnType = (otString, otInteger, otArrayString, otArrayInteger);
   
   TQueryParam = record
     Name: string;
     ParamType: TOwnType;
     Positions: array of Integer;
+    IsArray: Boolean;
   end;
   
   TQueryParams = array of TQueryParam;
@@ -96,14 +97,14 @@ type
   TResolvedReturnQueryArray = array of TResolvedReturnQuery;
 
   // Типы для генерации кода
-  TGoType = (gtString, gtInt);
+  TGoType = (gtString, gtInt, gtArrayString, gtArrayInt);
 
 // Константы
 const
   ALLOWED_QUERY_RETURN_TYPES: array[0..2] of string = ('one', 'many', 'exec');
   ALLOWED_SQL_COLUMN_TYPES: array[0..1] of string = ('TEXT', 'INTEGER');
-  ALLOWED_GO_TYPES: array[0..1] of string = ('string', 'int');
-  ALLOWED_OWN_TYPES: array[0..1] of string = ('string', 'int');
+  ALLOWED_GO_TYPES: array[0..3] of string = ('string', 'int', '[]string', '[]int');
+  ALLOWED_OWN_TYPES: array[0..3] of string = ('string', 'int', 'array:string', 'array:int');
 
 // Функции для проверки типов
 function IsAllowedQueryReturnType(const TypeName: string): Boolean;
@@ -151,6 +152,14 @@ var
   i: Integer;
 begin
   Result := False;
+  
+  // Special handling for 'array' type
+  if TypeName = 'array' then
+  begin
+    Result := True;
+    Exit;
+  end;
+  
   for i := Low(ALLOWED_OWN_TYPES) to High(ALLOWED_OWN_TYPES) do
     Result := (Result or (ALLOWED_OWN_TYPES[i] = TypeName));
 end;
@@ -176,6 +185,8 @@ begin
   case OwnType of
     otString: Result := gtString;
     otInteger: Result := gtInt;
+    otArrayString: Result := gtArrayString;
+    otArrayInteger: Result := gtArrayInt;
   end;
 end;
 
@@ -184,6 +195,8 @@ begin
   case GoType of
     gtString: Result := 'string';
     gtInt: Result := 'int';
+    gtArrayString: Result := '[]string';
+    gtArrayInt: Result := '[]int';
   end;
 end;
 

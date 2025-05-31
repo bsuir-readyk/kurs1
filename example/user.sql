@@ -27,7 +27,9 @@ WHERE
     WHERE
       tags.user_id = <@user_id:int@>
       AND
-      tags.text IN (<@cs_tags:string@>)
+      tags.text IN (<@tag_list:array:string@>)
+      AND
+      tags.text IN (<@tag2_list:array:string@>)
   ))
   AND
   (t1.created_at > <@min_created_at:int@>)

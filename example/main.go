@@ -312,11 +312,12 @@ func testGetWorthy(queries *gen.Queries, ctx context.Context) {
 		}
 	}
 
-	// Try GetWorthy with simplified parameters (this won't work properly due to IN clause limitations)
-	fmt.Println("\nAttempting to use generated GetWorthy function (this might not work due to IN clause):")
+	// Try GetWorthy with the new array parameter
+	fmt.Println("\nUsing GetWorthy with array parameter syntax:")
 	transactions, err := queries.GetWorthy(ctx, gen.GetWorthyParams{
 		User_id:        1,
-		Cs_tags:        "'income','expense'",
+		Tag_list:       []string{"income", "expense"},
+		Tag2_list:      []string{"income", "food"},
 		Min_created_at: 0,
 		Max_created_at: 9999999999,
 		Description_wk: "%",
@@ -333,8 +334,8 @@ func testGetWorthy(queries *gen.Queries, ctx context.Context) {
 		}
 	}
 
-	// Try our manual implementation that correctly handles the IN clause
-	fmt.Println("\nUsing WorkingGetWorthy implementation with proper IN clause handling:")
+	// For comparison, keep using the manual implementation
+	fmt.Println("\nFor comparison, using WorkingGetWorthy implementation:")
 	results, err := WorkingGetWorthy(
 		queries.DB,
 		ctx,

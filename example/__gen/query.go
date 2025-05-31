@@ -5,16 +5,25 @@ import (
 )
 
 
-// GetSingle
-const GetSingleSql = `
-SELECT *
-FROM users
-WHERE username = ?;
+// CreateUser
+const CreateUserSql = `
+INSERT INTO users (
+    username,
+    image,
+    password
+) VALUES (
+    ?,
+    ?,
+    ?
+)
+RETURNING *;
 `
-type GetSingleParams struct {
+type CreateUserParams struct {
   Username string
+  Image string
+  Password string
 }
-type GetSingleResult struct {
+type CreateUserResult struct {
   Primary_currency string
   Username string
   Password string
@@ -22,9 +31,9 @@ type GetSingleResult struct {
   Id int
   Balance int
 }
-func (q *Queries) GetSingle(ctx context.Context, arg GetSingleParams) (*GetSingleResult, error) {
-  row := q.DB.QueryRowContext(ctx, GetSingleSql, arg.Username)
-  var i GetSingleResult
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (*CreateUserResult, error) {
+  row := q.DB.QueryRowContext(ctx, CreateUserSql, arg.Username, arg.Image, arg.Password)
+  var i CreateUserResult
   err := row.Scan(
     &i.Primary_currency,
       &i.Username,
@@ -36,60 +45,14 @@ func (q *Queries) GetSingle(ctx context.Context, arg GetSingleParams) (*GetSingl
   return &i, err
 }
 
-// InsertSingle
-const InsertSingleSql = `
-INSERT INTO users (username, password, image) 
-VALUES (?, ?, ?)
-RETURNING id, username, image i;
+// GetUserById
+const GetUserByIdSql = `
+SELECT * FROM users WHERE id = ?;
 `
-type InsertSingleParams struct {
-  Username string
-  Password string
-  Image string
-}
-type InsertSingleResult struct {
-  Id int
-  Username string
-  I string
-}
-func (q *Queries) InsertSingle(ctx context.Context, arg InsertSingleParams) (*InsertSingleResult, error) {
-  row := q.DB.QueryRowContext(ctx, InsertSingleSql, arg.Username, arg.Password, arg.Image)
-  var i InsertSingleResult
-  err := row.Scan(
-    &i.Id,
-      &i.Username,
-      &i.I,
-  )
-  return &i, err
-}
-
-// GetRepeated
-const GetRepeatedSql = `
-SELECT id FROM users WHERE id = ? AND ? < 10;
-`
-type GetRepeatedParams struct {
+type GetUserByIdParams struct {
   Id int
 }
-type GetRepeatedResult struct {
-  Id int
-}
-func (q *Queries) GetRepeated(ctx context.Context, arg GetRepeatedParams) (*GetRepeatedResult, error) {
-  row := q.DB.QueryRowContext(ctx, GetRepeatedSql, arg.Id, arg.Id)
-  var i GetRepeatedResult
-  err := row.Scan(
-    &i.Id,
-  )
-  return &i, err
-}
-
-// GetMany
-const GetManySql = `
-SELECT users.* FROM users WHERE id < ?;
-`
-type GetManyParams struct {
-  Id int
-}
-type GetManyResult struct {
+type GetUserByIdResult struct {
   Primary_currency string
   Username string
   Password string
@@ -97,22 +60,167 @@ type GetManyResult struct {
   Id int
   Balance int
 }
-func (q *Queries) GetMany(ctx context.Context, arg GetManyParams) (*[]GetManyResult, error) {
-  rows, err := q.DB.QueryContext(ctx, GetManySql, arg.Id)
+func (q *Queries) GetUserById(ctx context.Context, arg GetUserByIdParams) (*GetUserByIdResult, error) {
+  row := q.DB.QueryRowContext(ctx, GetUserByIdSql, arg.Id)
+  var i GetUserByIdResult
+  err := row.Scan(
+    &i.Primary_currency,
+      &i.Username,
+      &i.Password,
+      &i.Image,
+      &i.Id,
+      &i.Balance,
+  )
+  return &i, err
+}
+
+// GetUserByUsername
+const GetUserByUsernameSql = `
+SELECT * FROM users WHERE username = ?;
+`
+type GetUserByUsernameParams struct {
+  Username string
+}
+type GetUserByUsernameResult struct {
+  Primary_currency string
+  Username string
+  Password string
+  Image string
+  Id int
+  Balance int
+}
+func (q *Queries) GetUserByUsername(ctx context.Context, arg GetUserByUsernameParams) (*GetUserByUsernameResult, error) {
+  row := q.DB.QueryRowContext(ctx, GetUserByUsernameSql, arg.Username)
+  var i GetUserByUsernameResult
+  err := row.Scan(
+    &i.Primary_currency,
+      &i.Username,
+      &i.Password,
+      &i.Image,
+      &i.Id,
+      &i.Balance,
+  )
+  return &i, err
+}
+
+// CreateTransaction
+const CreateTransactionSql = `
+INSERT INTO transactions (
+    description,
+    currency,
+    owner_id,
+    amount,
+    is_income
+) VALUES (
+    ?,
+    ?,
+    ?,
+    ?, -- TODO: float
+    ?
+)
+RETURNING *;
+`
+type CreateTransactionParams struct {
+  Description string
+  Currency string
+  Owner_id int
+  Amount int
+  Is_income int
+}
+type CreateTransactionResult struct {
+  Description string
+  Currency string
+  Id int
+  Owner_id int
+  Amount int
+  Is_income int
+  Created_at int
+}
+func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (*CreateTransactionResult, error) {
+  row := q.DB.QueryRowContext(ctx, CreateTransactionSql, arg.Description, arg.Currency, arg.Owner_id, arg.Amount, arg.Is_income)
+  var i CreateTransactionResult
+  err := row.Scan(
+    &i.Description,
+      &i.Currency,
+      &i.Id,
+      &i.Owner_id,
+      &i.Amount,
+      &i.Is_income,
+      &i.Created_at,
+  )
+  return &i, err
+}
+
+// CreateTag
+const CreateTagSql = `
+INSERT INTO tags (
+  text,
+  user_id,
+  transaction_id
+) VALUES (
+  ?,
+  ?,
+  ?
+)
+RETURNING *;
+`
+type CreateTagParams struct {
+  Text string
+  User_id int
+  Transaction_id int
+}
+type CreateTagResult struct {
+  Text string
+  Id int
+  User_id int
+  Transaction_id int
+}
+func (q *Queries) CreateTag(ctx context.Context, arg CreateTagParams) (*CreateTagResult, error) {
+  row := q.DB.QueryRowContext(ctx, CreateTagSql, arg.Text, arg.User_id, arg.Transaction_id)
+  var i CreateTagResult
+  err := row.Scan(
+    &i.Text,
+      &i.Id,
+      &i.User_id,
+      &i.Transaction_id,
+  )
+  return &i, err
+}
+
+// GetRecentTransactionsByUserId
+const GetRecentTransactionsByUserIdSql = `
+SELECT * FROM transactions WHERE owner_id = ? LIMIT ?;
+`
+type GetRecentTransactionsByUserIdParams struct {
+  Owner_id int
+  Limit int
+}
+type GetRecentTransactionsByUserIdResult struct {
+  Description string
+  Currency string
+  Id int
+  Owner_id int
+  Amount int
+  Is_income int
+  Created_at int
+}
+func (q *Queries) GetRecentTransactionsByUserId(ctx context.Context, arg GetRecentTransactionsByUserIdParams) (*[]GetRecentTransactionsByUserIdResult, error) {
+  rows, err := q.DB.QueryContext(ctx, GetRecentTransactionsByUserIdSql, arg.Owner_id, arg.Limit)
   if err != nil {
     return nil, err
   }
   defer rows.Close()
-  var items []GetManyResult
+  var items []GetRecentTransactionsByUserIdResult
   for rows.Next() {
-    var i GetManyResult
+    var i GetRecentTransactionsByUserIdResult
     if err := rows.Scan(
-      &i.Primary_currency,
-        &i.Username,
-        &i.Password,
-        &i.Image,
+      &i.Description,
+        &i.Currency,
         &i.Id,
-        &i.Balance,
+        &i.Owner_id,
+        &i.Amount,
+        &i.Is_income,
+        &i.Created_at,
     ); err != nil {
       return nil, err
     }
@@ -127,42 +235,43 @@ func (q *Queries) GetMany(ctx context.Context, arg GetManyParams) (*[]GetManyRes
   return &items, nil
 }
 
-// GetWorthy
-const GetWorthySql = `
+// GetTransactionsByAndTags
+const GetTransactionsByAndTagsSql = `
 SELECT t1.*, tg.text
 FROM transactions as t1
-  LEFT JOIN tags tg ON tg.transaction_id = t1.id
+  LEFT JOIN tags as tg ON tg.transaction_id = t1.id
 WHERE
   t1.owner_id = ?
   AND
-  (t1.id IN (
+  (? = 0 OR t1.id IN (
     SELECT tags.transaction_id
-    FROM tags tags
-    WHERE
-      tags.user_id = ?
-      AND
-      tags.text IN (?)
+      FROM tags as tags
+      WHERE
+        tags.user_id = ?
+        AND
+        tags.text IN (?) -- TODO: array
   ))
   AND
-  (t1.created_at > ?)
+  (? = 0 OR t1.created_at > ?)
   AND
-  (t1.created_at < ?)
+  (? = 0 OR t1.created_at < ?)
   AND
-  (t1.description LIKE ?)
+  (? = "" OR t1.description LIKE ?)
 GROUP BY t1.id
 LIMIT ?
 OFFSET ?;
 `
-type GetWorthyParams struct {
+type GetTransactionsByAndTagsParams struct {
   User_id int
-  Cs_tags string
+  Tags string
+  User_id2 int
   Min_created_at int
   Max_created_at int
   Description_wk string
   Limit int
   Offset int
 }
-type GetWorthyResult struct {
+type GetTransactionsByAndTagsResult struct {
   Description string
   Currency string
   Id int
@@ -172,15 +281,15 @@ type GetWorthyResult struct {
   Created_at int
   Text string
 }
-func (q *Queries) GetWorthy(ctx context.Context, arg GetWorthyParams) (*[]GetWorthyResult, error) {
-  rows, err := q.DB.QueryContext(ctx, GetWorthySql, arg.User_id, arg.User_id, arg.Cs_tags, arg.Min_created_at, arg.Max_created_at, arg.Description_wk, arg.Limit, arg.Offset)
+func (q *Queries) GetTransactionsByAndTags(ctx context.Context, arg GetTransactionsByAndTagsParams) (*[]GetTransactionsByAndTagsResult, error) {
+  rows, err := q.DB.QueryContext(ctx, GetTransactionsByAndTagsSql, arg.User_id, arg.Tags, arg.User_id2, arg.Tags, arg.Min_created_at, arg.Min_created_at, arg.Max_created_at, arg.Max_created_at, arg.Description_wk, arg.Description_wk, arg.Limit, arg.Offset)
   if err != nil {
     return nil, err
   }
   defer rows.Close()
-  var items []GetWorthyResult
+  var items []GetTransactionsByAndTagsResult
   for rows.Next() {
-    var i GetWorthyResult
+    var i GetTransactionsByAndTagsResult
     if err := rows.Scan(
       &i.Description,
         &i.Currency,

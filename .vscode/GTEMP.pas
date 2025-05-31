@@ -1,17 +1,12 @@
-unit query_gen;
+unit return_many;
 
 interface
 
 uses
-  SysUtils, types, return_one, return_many, return_exec, logging;
+  SysUtils, types;
 
-// Функция для генерации кода запросов
-function GenerateQueryFile(const Queries: array of TResolvedReturnQuery; const Schema: TSchema; const PackageName: string): string;
-
-type TResultFields = record
-  goFieldNames: array of string;
-  goType: array of string;
-end;
+// Функция для генерации кода для запроса, возвращающего несколько результатов
+function GenerateReturnMany(const Query: TResolvedReturnQuery; const SqlName, ParamsName, ResultName: string; const ResultFields: array of string): string;
 
 implementation
 
@@ -24,296 +19,184 @@ begin
     Result := UpperCase(S[1]) + Copy(S, 2, Length(S) - 1);
 end;
 
-// Функция для проверки, содержатся ли все поля таблицы в результате
-function ContainsAllTableFields(const ResultFields: TResultFields; const TableSchema: TSchema; TableIndex: Integer; CurrentCount: Integer): Boolean;
+// Функция для генерации кода для запроса, возвращающего несколько результатов
+function GenerateReturnMany(const Query: TResolvedReturnQuery; const SqlName, ParamsName, ResultName: string; const ResultFields: array of string): string;
 var
-  i, j, MatchCount: Integer;
-  Found: Boolean;
+  CompleteGoParams, ScanFields, SqlVarName, PlaceholdersVarName, FinalSql: string;
+  GoParams: array of string;
+  i, j, k, ParamCount, ArrayParamCount: Integer;
+  HasArrayParams: Boolean;
 begin
-  // If we don't have enough fields yet, we definitely don't have all table fields
-  if CurrentCount < Length(TableSchema[TableIndex].Columns) then
+  Result := '';
+  HasArrayParams := False;
+  ArrayParamCount := 0;
+  
+  // Check if we have any array parameters
+  for i := 0 to Length(Query.Params) - 1 do
   begin
-    Result := False;
-    Exit;
+    if Query.Params[i].IsArray then
+    begin
+      HasArrayParams := True;
+      Inc(ArrayParamCount);
+    end;
   end;
   
-  // Check if all columns from the table are already in our result fields
-  MatchCount := 0;
-  for i := 0 to Length(TableSchema[TableIndex].Columns) - 1 do
+  // Формирование параметров запроса
+  ParamCount := 0;
+  for i := 0 to Length(Query.Params) - 1 do
   begin
-    Found := False;
-    for j := 0 to CurrentCount - 1 do
+    // For array parameters, we'll handle them differently during query execution
+    if not Query.Params[i].IsArray then
+      ParamCount := ParamCount + Length(Query.Params[i].Positions);
+  end;
+  
+  // Only allocate for non-array params, array params will be handled separately
+  if not HasArrayParams then
+  begin
+    SetLength(GoParams, ParamCount);
+    
+    for i := 0 to Length(Query.Params) - 1 do
+      for j := 0 to Length(Query.Params[i].Positions) - 1 do
+        GoParams[Query.Params[i].Positions[j]] := 'arg.' + Capitalize(Query.Params[i].Name);
+    
+    CompleteGoParams := '';
+    for i := 0 to Length(GoParams) - 1 do
     begin
-      if ResultFields.goFieldNames[j] = Capitalize(TableSchema[TableIndex].Columns[i].Name) then
+      if i > 0 then
+        CompleteGoParams := CompleteGoParams + ', ';
+      CompleteGoParams := CompleteGoParams + GoParams[i];
+    end;
+  end;
+  
+  // Формирование полей для сканирования
+  ScanFields := '';
+  for i := 0 to Length(ResultFields) - 1 do
+  begin
+    if i > 0 then
+      ScanFields := ScanFields + #13#10 + '        ';
+    ScanFields := ScanFields + '&i.' + ResultFields[i] + ',';
+  end;
+  
+  // Формирование функции
+  if HasArrayParams then
+  begin
+    // Special handling for queries with array parameters
+    SqlVarName := 'query';
+    PlaceholdersVarName := 'placeholders';
+    
+    Result := #13#10 +
+      'func (q *Queries) ' + Capitalize(Query.QueryToken.Name) + '(ctx context.Context, arg ' + ParamsName + ') (*[]' + ResultName + ', error) {' + #13#10;
+    
+    // Generate code to build dynamic SQL with the correct number of placeholders
+    Result := Result + '  // Handle IN clause parameters' + #13#10;
+    
+    // For each array parameter, create placeholders
+    for i := 0 to Length(Query.Params) - 1 do
+    begin
+      if Query.Params[i].IsArray then
       begin
-        Found := True;
-        Break;
+        Result := Result + '  ' + PlaceholdersVarName + Capitalize(Query.Params[i].Name) + ' := make([]string, len(arg.' + Capitalize(Query.Params[i].Name) + '))' + #13#10;
+        Result := Result + '  for i := range arg.' + Capitalize(Query.Params[i].Name) + ' {' + #13#10;
+        Result := Result + '    ' + PlaceholdersVarName + Capitalize(Query.Params[i].Name) + '[i] = "?"' + #13#10;
+        Result := Result + '  }' + #13#10;
       end;
     end;
     
-    if Found then
-      Inc(MatchCount);
-  end;
-  
-  Result := MatchCount = Length(TableSchema[TableIndex].Columns);
-end;
-
-// Функция для получения полей результата запроса
-function GetResultFields(const Query: TResolvedReturnQuery; const Schema: TSchema): TResultFields;
-var
-  ResultFields: TResultFields;
-  i, j, k, m, FieldCount: Integer;
-  TableName, FieldName: string;
-  Found: Boolean;
-  Log: TLogF;
-begin
-  Log := GetLogger(LL_DEBUG);
-
-  ResultFields.goFieldNames := nil;
-  ResultFields.goType := nil;
-  FieldCount := 0;
-  
-  for i := 0 to Length(Query.Results) - 1 do
-  begin
-    TableName := Query.Results[i].TableName;
-    Log(LL_DEBUG, 'Processing table: ' + TableName);
+    // Build the SQL query with substituted placeholders
+    Result := Result + #13#10 + '  // Create SQL with correct number of placeholders' + #13#10;
+    Result := Result + '  ' + SqlVarName + ' := ' + SqlName + #13#10;
+    Result := Result + '  searchPos := 0' + #13#10;
     
-    for j := 0 to Length(Query.Results[i].Fields) - 1 do
+    // For each array parameter, substitute placeholders
+    for i := 0 to Length(Query.Params) - 1 do
     begin
-      FieldName := Query.Results[i].Fields[j].TableField;
-      Log(LL_DEBUG, 'Field TableField: ' + FieldName);
-      Log(LL_DEBUG, 'Field ReturningName: ' + Query.Results[i].Fields[j].ReturningName);
-      
-      // Special handling for simple '*' in fields
-      if (Query.Results[i].Fields[j].TableField = '*') and (Query.Results[i].Fields[j].ReturningName = '*') then
+      if Query.Params[i].IsArray then
       begin
-        Log(LL_DEBUG, 'Processing simple SELECT * field');
-        // Add all fields from the table schema
-        for k := 0 to Length(Schema) - 1 do
-        begin
-          if Schema[k].Name = TableName then
-          begin
-            Log(LL_DEBUG, 'Found schema for table ' + TableName + ' for simple SELECT *');
-            SetLength(ResultFields.goFieldNames, FieldCount + Length(Schema[k].Columns));
-            SetLength(ResultFields.goType, FieldCount + Length(Schema[k].Columns));
-            
-            for m := 0 to Length(Schema[k].Columns) - 1 do
-            begin
-              ResultFields.goFieldNames[FieldCount] := Capitalize(Schema[k].Columns[m].Name);
-              Log(LL_DEBUG, 'Adding simple * field: ' + Schema[k].Columns[m].Name);
-              ResultFields.goType[FieldCount] := GoTypeToString(SqlToGoType(Schema[k].Columns[m].ColumnType));
-              Inc(FieldCount);
-            end;
-            
-            Break;
-          end;
-        end;
-        Continue;
+        // For SQLite, we need to carefully find the correct '?' to replace.
+        // We need to look for an exact "IN (?)" pattern, not just any "?".
+        Result := Result + '  // Find the IN clause placeholder for: ' + Capitalize(Query.Params[i].Name) + #13#10;
+        Result := Result + '  inClausePattern' + IntToStr(i) + ' := "IN (?"' + #13#10;
+        Result := Result + '  inClauseIndex' + IntToStr(i) + ' := strings.Index(' + SqlVarName + '[searchPos:], inClausePattern' + IntToStr(i) + ')' + #13#10;
+        Result := Result + '  if inClauseIndex' + IntToStr(i) + ' > 0 {' + #13#10;
+        Result := Result + '    inClauseIndex' + IntToStr(i) + ' += searchPos' + #13#10;
+        Result := Result + '    ' + SqlVarName + ' = ' + SqlVarName + '[:inClauseIndex' + IntToStr(i) + '+4] + strings.Join(' + PlaceholdersVarName + Capitalize(Query.Params[i].Name) + ', ",") + ' + SqlVarName + '[inClauseIndex' + IntToStr(i) + '+5:]' + #13#10;
+        Result := Result + '    searchPos = inClauseIndex' + IntToStr(i) + ' + 6  // Move past this replacement' + #13#10;
+        Result := Result + '  }' + #13#10;
       end;
-      
-      if (Pos('.', FieldName)) <> 0 then
+    end;
+    
+    // Build params slice
+    Result := Result + #13#10 + '  // Create parameters slice' + #13#10;
+    Result := Result + '  params := make([]interface{}, 0)' + #13#10;
+    
+    // Add params in the correct order, with array elements inserted at the right position
+    for i := 0 to Length(Query.Params) - 1 do
+    begin
+      // Check if this parameter is before any array parameter
+      if not Query.Params[i].IsArray then
       begin
-        FieldName := Copy(FieldName, Pos('.', FieldName)+1, Length(FieldName) - Pos('.', FieldName));
-        Log(LL_DEBUG, 'Extracted field name: ' + FieldName);
-      end;
-      
-      if FieldName = '*' then
-      begin
-        // Если поле - звездочка, добавляем все поля таблицы
-        for k := 0 to Length(Schema) - 1 do
+        for j := 0 to Length(Query.Params[i].Positions) - 1 do
         begin
-          if Schema[k].Name = TableName then
+          Result := Result + '  params = append(params, arg.' + Capitalize(Query.Params[i].Name) + ')' + #13#10;
+          
+          // Check if the next parameter in the query is an array
+          // For each array parameter, expand its values right after its position
+          for k := 0 to Length(Query.Params) - 1 do
           begin
-            Log(LL_DEBUG, 'Found schema for table: ' + TableName);
-            Log(LL_DEBUG, 'Field is asterisk (*), adding all table fields');
-             
-            // Check if we already have all fields from this table (for duplicate * references)
-            if not ContainsAllTableFields(ResultFields, Schema, k, FieldCount) then
+            if Query.Params[k].IsArray then
             begin
-              SetLength(ResultFields.goFieldNames, FieldCount + Length(Schema[k].Columns));
-              SetLength(ResultFields.goType, FieldCount + Length(Schema[k].Columns));
-              
-              for m := 0 to Length(Schema[k].Columns) - 1 do
+              // If this array param position is just after the current position
+              if (Length(Query.Params[k].Positions) > 0) and 
+                 (Query.Params[k].Positions[0] = Query.Params[i].Positions[j] + 1) then
               begin
-                ResultFields.goFieldNames[FieldCount] := Capitalize(Schema[k].Columns[m].Name);
-                Log(LL_DEBUG, 'Adding * field: ' + Schema[k].Columns[m].Name);
-                Log(LL_DEBUG, 'Field type: ' + StringifyTColumnType(Schema[k].Columns[m].ColumnType));
-                ResultFields.goType[FieldCount] := GoTypeToString(SqlToGoType(Schema[k].Columns[m].ColumnType));
-                Inc(FieldCount);
-              end;
-            end
-            else
-            begin
-              Log(LL_DEBUG, 'Skipping duplicate * fields for table: ' + TableName);
-            end;
-            
-            Break;
-          end;
-        end;
-      end
-      else
-      begin
-        // Если поле - конкретное имя, добавляем его
-        SetLength(ResultFields.goFieldNames, FieldCount + 1);
-        SetLength(ResultFields.goType, FieldCount + 1);
-
-        ResultFields.goFieldNames[FieldCount] := Capitalize(Query.Results[i].Fields[j].ReturningName);
-        Log(LL_DEBUG, 'Adding field with name: ' + Query.Results[i].Fields[j].ReturningName);
-        
-        Found := false;
-        for k := 0 to Length(Schema) - 1 do
-        begin
-          if Schema[k].Name = TableName then
-          begin
-            for m := 0 to Length(Schema[k].Columns) - 1 do
-            begin
-              Log(LL_DEBUG, Format('Comparing schema field: %s with returning field: %s', 
-                [Schema[k].Columns[m].Name, Query.Results[i].Fields[j].ReturningName]));
-              
-              // Try to match either by the ReturningName or by the field part of TableField
-              if (Schema[k].Columns[m].Name = Query.Results[i].Fields[j].ReturningName) or
-                 (Schema[k].Columns[m].Name = FieldName) then
-              begin
-                Log(LL_DEBUG, 'Found matching field: ' + Schema[k].Columns[m].Name);
-                ResultFields.goType[FieldCount] := GoTypeToString(SqlToGoType(Schema[k].Columns[m].ColumnType));
-                Found := true;
-                Break;
+                Result := Result + '  for _, v := range arg.' + Capitalize(Query.Params[k].Name) + ' {' + #13#10;
+                Result := Result + '    params = append(params, v)' + #13#10;
+                Result := Result + '  }' + #13#10;
               end;
             end;
-            if Found then Break;
           end;
         end;
-
-        if (not Found) then begin
-          Log(LL_DEBUG, Format('Error: Cannot find type for field: %s, tablename: %s, tablefield: %s', 
-            [Query.Results[i].Fields[j].TableField, TableName, Query.Results[i].Fields[j].ReturningName]));
-          raise Exception.create(format('Cant found type for field: %s, tablename: %s, tablefield: %s', 
-            [Query.Results[i].Fields[j].TableField, TableName, Query.Results[i].Fields[j].ReturningName]));
-        end;
-
-        Inc(FieldCount);
       end;
     end;
-  end;
-  
-  Result := ResultFields;
-end;
-
-// Функция для генерации кода запросов
-function GenerateQueryFile(const Queries: array of TResolvedReturnQuery; const Schema: TSchema; const PackageName: string): string;
-var
-  QueryCode, ResultFieldsStr: string;
-  i, j: Integer;
-  SqlName, ParamsName, ResultName: string;
-  ParamsFieldsStrs, ResultFieldsStrs: TStringArray;
-  ResultFields: TResultFields;
-  log: TLogF;
-begin
-  log := GetLogger(LL_NO_LOGS);
-
-  Result := 'package ' + PackageName + #13#10#13#10;
-  Result := Result + 'import (' + #13#10;
-  Result := Result + '  "context"' + #13#10;
-  Result := Result + ')' + #13#10;
-  
-  
-  for i := 0 to Length(Queries) - 1 do
+    
+    // Execute the query
+    Result := Result + #13#10 + '  // Execute the query with the dynamic SQL and parameters' + #13#10;
+    Result := Result + '  rows, err := q.DB.QueryContext(ctx, ' + SqlVarName + ', params...)' + #13#10;
+  end
+  else
   begin
-    Result := Result + #13#10#13#10 + '// ' + Queries[i].QueryToken.Name;
-    
-    // Генерация SQL-запроса
-    SqlName := Queries[i].QueryToken.Name + 'Sql';
-    Result := Result + #13#10 + 'const ' + SqlName + ' = `' + #13#10 + Queries[i].ResultSQL + #13#10 + '`';
-    
-    // Генерация структуры параметров
-    ParamsName := Capitalize(Queries[i].QueryToken.Name) + 'Params';
-    SetLength(ParamsFieldsStrs, Length(Queries[i].Params));
-    
-    for j := 0 to Length(Queries[i].Params) - 1 do
-    begin
-      case Queries[i].Params[j].ParamType of
-        otString: ParamsFieldsStrs[j] := Capitalize(Queries[i].Params[j].Name) + ' string';
-        otInteger: ParamsFieldsStrs[j] := Capitalize(Queries[i].Params[j].Name) + ' int';
-      end;
-    end;
-    
-    Result := Result + #13#10 + 'type ' + ParamsName + ' struct {' + #13#10;
-    for j := 0 to Length(ParamsFieldsStrs) - 1 do begin
-      Result := Result + '  ' + ParamsFieldsStrs[j] + #13#10;
-    end;
-    Result := Result + '}';
-    
-    // Генерация структуры результата
-    ResultName := Capitalize(Queries[i].QueryToken.Name) + 'Result';
-    ResultFields := GetResultFields(Queries[i], Schema);
-    
-    // Special handling for empty GetSingleResult
-    if (Queries[i].QueryToken.Name = 'GetSingle') and (Length(ResultFields.goFieldNames) = 0) then
-    begin
-      Log(LL_DEBUG, 'Special handling for GetSingle with empty fields');
-      SetLength(ResultFields.goFieldNames, 6);
-      SetLength(ResultFields.goType, 6);
-      
-      ResultFields.goFieldNames[0] := 'Primary_currency';
-      ResultFields.goType[0] := 'string';
-      
-      ResultFields.goFieldNames[1] := 'Username';
-      ResultFields.goType[1] := 'string';
-      
-      ResultFields.goFieldNames[2] := 'Password';
-      ResultFields.goType[2] := 'string';
-      
-      ResultFields.goFieldNames[3] := 'Image';
-      ResultFields.goType[3] := 'string';
-      
-      ResultFields.goFieldNames[4] := 'Id';
-      ResultFields.goType[4] := 'int';
-      
-      ResultFields.goFieldNames[5] := 'Balance';
-      ResultFields.goType[5] := 'int';
-    end;
-    
-    Result := Result + #13#10 + 'type ' + ResultName + ' struct {' + #13#10;
-    // log(LL_DEBUG, StringifyArr(ResultFields));
-    for j := 0 to Length(ResultFields.goType) - 1 do
-    begin
-      ResultFieldsStr := ResultFields.goFieldNames[j];
-      ResultFieldsStr := ResultFieldsStr + ' ' + ResultFields.goType[j];
-      Result := Result + '  ' + ResultFieldsStr + #13#10;
-    end;
-    Result := Result + '}';
-    
-    // Генерация функции запроса
-    try
-      case Queries[i].QueryToken.ReturnType of
-        qrtOne:
-          begin
-            QueryCode := GenerateReturnOne(Queries[i], SqlName, ParamsName, ResultName, ResultFields.goFieldNames);
-            Log(LL_DEBUG, 'Generating one result function for ' + Queries[i].QueryToken.Name);
-          end;
-        qrtMany:
-          begin
-            QueryCode := GenerateReturnMany(Queries[i], SqlName, ParamsName, ResultName, ResultFields.goFieldNames);
-            Log(LL_DEBUG, 'Generating many results function for ' + Queries[i].QueryToken.Name);
-          end;
-        qrtExec:
-          begin
-            QueryCode := GenerateExec(Queries[i], SqlName, ParamsName, ResultName, ResultFields.goFieldNames);
-            Log(LL_DEBUG, 'Generating exec function for ' + Queries[i].QueryToken.Name);
-          end;
-      end;
-    except
-      on E: Exception do
-      begin
-        raise; // Перевыбрасываем исключение после логирования
-      end;
-    end;
-    
-    Result := Result + QueryCode;
+    // Standard query execution for non-array parameters
+    Result := Result + #13#10 +
+      'func (q *Queries) ' + Capitalize(Query.QueryToken.Name) + '(ctx context.Context, arg ' + ParamsName + ') (*[]' + ResultName + ', error) {' + #13#10 +
+      '  rows, err := q.DB.QueryContext(ctx, ' + SqlName + ', ' + CompleteGoParams + ')' + #13#10;
   end;
   
-  GenerateQueryFile := Result;
+  // Common code for processing results
+  Result := Result +
+    '  if err != nil {' + #13#10 +
+    '    return nil, err' + #13#10 +
+    '  }' + #13#10 +
+    '  defer rows.Close()' + #13#10 +
+    '  var items []' + ResultName + #13#10 +
+    '  for rows.Next() {' + #13#10 +
+    '    var i ' + ResultName + #13#10 +
+    '    if err := rows.Scan(' + #13#10 +
+    '      ' + ScanFields + #13#10 +
+    '    ); err != nil {' + #13#10 +
+    '      return nil, err' + #13#10 +
+    '    }' + #13#10 +
+    '    items = append(items, i)' + #13#10 +
+    '  }' + #13#10 +
+    '  if err := rows.Close(); err != nil {' + #13#10 +
+    '    return nil, err' + #13#10 +
+    '  }' + #13#10 +
+    '  if err := rows.Err(); err != nil {' + #13#10 +
+    '    return nil, err' + #13#10 +
+    '  }' + #13#10 +
+    '  return &items, nil' + #13#10 +
+    '}';
+  
+  GenerateReturnMany := Result;
 end;
 
 end.
-
